@@ -13,10 +13,10 @@ const MODES = {
 const MODE_SETTINGS = {
     [MODES.GPU]: {
         label: 'GPU',
-        defaultParticles: 131072,
-        minParticles: 4096,
-        maxParticles: 1048576,
-        particleStep: 4096
+        defaultParticles: 500000,
+        minParticles: 500000,
+        maxParticles: 4000000,
+        particleStep: 10000
     },
     [MODES.CPU]: {
         label: 'CPU',
@@ -50,17 +50,17 @@ const PRESET_DEFAULTS = {
     [PRESETS.DISK_GALAXY]: { gravity: 0.75, deltaTime: 0.003, blackHoleMass: 120, samples: 48, timeScale: 0.16, camera: { x: 0, y: 50, z: 36 } },
     [PRESETS.ELLIPTICAL_GALAXY]: { gravity: 0.55, deltaTime: 0.003, blackHoleMass: 60, samples: 40, timeScale: 0.1, camera: { x: 0, y: 28, z: 56 } },
     [PRESETS.DOUBLE_SPIRAL_GALAXY]: { gravity: 0.8, deltaTime: 0.003, blackHoleMass: 110, samples: 56, timeScale: 0.22, camera: { x: 0, y: 50, z: 36 } },
-    [PRESETS.UNIVERSE]: { gravity: 1.0, deltaTime: 0.001, blackHoleMass: 0, samples: 128, particles: 262144, timeScale: 1.0, camera: { x: 0, y: 9, z: 36 } },
+    [PRESETS.UNIVERSE]: { gravity: 1.0, deltaTime: 0.001, blackHoleMass: 0, samples: 128, particles: 500000, timeScale: 1.0, camera: { x: 0, y: 9, z: 36 } },
     [PRESETS.GALAXY_COLLISION]: { gravity: 0.62, deltaTime: 0.001, blackHoleMass: 140, samples: 64, timeScale: 0.14, camera: { x: 0, y: 52, z: 68 } }
 };
 
 const PRESET_PARTICLE_SETTINGS = {
     [PRESETS.UNIVERSE]: {
         [MODES.GPU]: {
-            defaultParticles: 262144,
-            minParticles: 65536,
-            maxParticles: 2097152,
-            particleStep: 8192
+            defaultParticles: 500000,
+            minParticles: 500000,
+            maxParticles: 4000000,
+            particleStep: 10000
         },
         [MODES.CPU]: {
             defaultParticles: 30000,
