@@ -26,6 +26,136 @@
             display: block;
         }
 
+        .landing {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+            background:
+                radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.06), transparent 22%),
+                radial-gradient(circle at 50% 50%, rgba(25, 89, 174, 0.18), transparent 44%),
+                radial-gradient(circle at 62% 58%, rgba(241, 132, 54, 0.12), transparent 34%),
+                rgba(0, 0, 0, 0.5);
+            color: #fff;
+            transition: opacity 240ms ease, visibility 240ms ease;
+        }
+
+        .landing-panel {
+            width: min(720px, 100%);
+            text-align: center;
+            font-family: "Trebuchet MS", "Avenir Next", ui-rounded, system-ui, sans-serif;
+        }
+
+        .landing h1 {
+            max-width: 720px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.94);
+            font-size: clamp(38px, 6.4vw, 72px);
+            line-height: 1;
+            font-weight: 760;
+            letter-spacing: 0;
+            text-shadow: 0 0 24px rgba(131, 202, 255, 0.16);
+        }
+
+        .landing h1 span {
+            display: block;
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.74);
+            font-size: clamp(20px, 2.8vw, 30px);
+            font-weight: 700;
+        }
+
+        .launch-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 210px));
+            justify-content: center;
+            gap: 14px;
+            margin-top: 34px;
+        }
+
+        .github-action {
+            display: flex;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
+        .launch-button,
+        .github-link {
+            min-height: 56px;
+            padding: 0 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+        }
+
+        .launch-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .launch-button.primary {
+            border-color: rgba(111, 211, 255, 0.54);
+            background: rgba(33, 125, 208, 0.42);
+        }
+
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 0 16px;
+            background: rgba(0, 0, 0, 0.22);
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 14px;
+        }
+
+        .button-icon {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 auto;
+        }
+
+        .github-link .button-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .launch-button:hover,
+        .github-link:hover {
+            border-color: rgba(255, 255, 255, 0.54);
+            background: rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+
+        .launch-button.primary:hover {
+            background: rgba(51, 145, 227, 0.52);
+        }
+
+        body.landing-active .hud,
+        body.landing-active .control-panel {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        body.sim-ready .landing {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+
         .hud {
             position: fixed;
             top: 12px;
@@ -128,6 +258,31 @@
         }
 
         @media (max-width: 720px) {
+            .landing {
+                background:
+                    radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.07), transparent 24%),
+                    linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.84)),
+                    radial-gradient(circle at 50% 24%, rgba(33, 125, 208, 0.24), transparent 42%);
+            }
+
+            .landing-panel {
+                width: 100%;
+            }
+
+            .landing h1 {
+                font-size: clamp(38px, 12vw, 58px);
+            }
+
+            .launch-actions {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .github-link,
+            .launch-button {
+                width: 100%;
+            }
+
             .hud {
                 right: 12px;
                 min-width: 0;
@@ -144,8 +299,39 @@
         }
     </style>
 </head>
-<body>
+<body class="landing-active">
     <canvas id="simulation"></canvas>
+
+    <main id="landing" class="landing" aria-labelledby="landing-title">
+        <section class="landing-panel">
+            <h1 id="landing-title">N-body galaxy sim</h1>
+            <div class="launch-actions" aria-label="Launch options">
+                <button class="launch-button primary" type="button" data-launch-mode="gpu" aria-label="Launch GPU version">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M9 9h6v6H9zM2 9h2M2 15h2M20 9h2M20 15h2M9 2v2M15 2v2M9 20v2M15 20v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    GPU
+                </button>
+                <button class="launch-button" type="button" data-launch-mode="cpu" aria-label="Launch CPU version">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 3v3M12 3v3M16 3v3M8 18v3M12 18v3M16 18v3M3 8h3M3 12h3M3 16h3M18 8h3M18 12h3M18 16h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M7 7h10v10H7z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M10 10h4v4h-4z" fill="currentColor"/>
+                    </svg>
+                    CPU
+                </button>
+            </div>
+            <div class="github-action">
+                <a class="github-link" href="https://github.com/bmfarley04/nbody-galaxy-sim" target="_blank" rel="noreferrer">
+                    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 2.2a9.8 9.8 0 0 0-3.1 19.1c.5.1.7-.2.7-.5v-1.8c-2.9.6-3.5-1.2-3.5-1.2-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 0 1.6 1.1 1.6 1.1.9 1.6 2.5 1.1 3.1.8.1-.7.4-1.1.7-1.4-2.3-.3-4.7-1.1-4.7-4.9 0-1.1.4-2 1.1-2.7-.1-.3-.5-1.3.1-2.7 0 0 .9-.3 2.8 1.1a9.5 9.5 0 0 1 5.1 0c1.9-1.3 2.8-1.1 2.8-1.1.6 1.4.2 2.4.1 2.7.7.8 1.1 1.7 1.1 2.7 0 3.8-2.4 4.7-4.7 4.9.4.3.8 1 .8 2v2.9c0 .3.2.6.8.5A9.8 9.8 0 0 0 12 2.2Z" fill="currentColor"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+        </section>
+    </main>
 
     <div id="fps-counter" class="hud">
         <div class="hud-row"><span>FPS</span><span id="fps-value" class="hud-value">0</span></div>

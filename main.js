@@ -87,6 +87,9 @@ const COLOR_SCHEME_INDEX = {
     [COLOR_SCHEMES.STELLAR]: 4
 };
 
+const LANDING_PARTICLES = 7800;
+const GITHUB_URL = 'https://github.com/bmfarley04/nbody-galaxy-sim';
+
 const canvas = document.querySelector('#simulation');
 const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -111,6 +114,7 @@ controls.zoomSpeed = 1.4;
 controls.rotateSpeed = 0.75;
 controls.panSpeed = 0.5;
 controls.screenSpacePanning = true;
+controls.enabled = false;
 
 const renderPass = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth * 0.6, window.innerHeight * 0.6), 0.22, 0.18, 0.32);
@@ -133,10 +137,15 @@ let gravity = PRESET_DEFAULTS[currentPreset].gravity;
 let deltaTime = PRESET_DEFAULTS[currentPreset].deltaTime;
 let blackHoleMass = PRESET_DEFAULTS[currentPreset].blackHoleMass;
 let sampleCount = PRESET_DEFAULTS[currentPreset].samples;
+let simulationStarted = false;
+let landingBackdrop = null;
 let physicsMs = 0;
 let renderMs = 0;
 
 const ui = {
+    body: document.body,
+    landing: document.getElementById('landing'),
+    launchButtons: document.querySelectorAll('[data-launch-mode]'),
     mode: document.getElementById('engine-mode'),
     preset: document.getElementById('preset-selector'),
     colorScheme: document.getElementById('color-scheme'),
@@ -162,6 +171,11 @@ const ui = {
     hudPhysics: document.getElementById('hud-physics-ms'),
     hudRender: document.getElementById('hud-render-ms')
 };
+
+const githubLink = ui.landing?.querySelector('.github-link');
+if (githubLink) {
+    githubLink.href = GITHUB_URL;
+}
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -256,6 +270,93 @@ function randomInSphere(radius = 1) {
     } while (x * x + y * y + z * z > 1);
 
     return { x: x * radius, y: y * radius, z: z * radius };
+}
+
+class LandingBackdrop {
+    constructor(count = LANDING_PARTICLES) {
+        this.count = count;
+        this.positions = new Float32Array(count * 3);
+        this.radii = new Float32Array(count);
+        this.angles = new Float32Array(count);
+        this.speeds = new Float32Array(count);
+        this.heights = new Float32Array(count);
+        this.colors = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+            const base = i * 3;
+            const isCore = Math.random() < 0.16;
+            const isDust = !isCore && Math.random() < 0.34;
+            const armCount = 4;
+            const arm = i % armCount;
+            const radius = isCore
+                ? Math.pow(Math.random(), 0.42) * 4.2 + 0.25
+                : Math.pow(Math.random(), 0.6) * 30 + 1.5;
+            const armAngle = (arm / armCount) * Math.PI * 2 + Math.log(radius + 1) * 1.55;
+            const angle = isCore
+                ? Math.random() * Math.PI * 2
+                : isDust
+                    ? Math.random() * Math.PI * 2 + Math.log(radius + 1) * 0.18
+                    : armAngle + randomSignedPow(1.35) * (0.36 - Math.min(radius / 30, 1) * 0.18);
+            const height = randomSignedPow(2.1) * (isCore ? 0.8 : 0.18 + radius * 0.016);
+            const heat = 1 - Math.min(radius / 28, 1);
+
+            this.radii[i] = radius;
+            this.angles[i] = angle;
+            this.speeds[i] = (isCore ? 0.08 : 0.052) / Math.sqrt(radius) + Math.random() * 0.005;
+            this.heights[i] = height;
+
+            this.positions[base] = Math.cos(angle) * radius;
+            this.positions[base + 1] = height;
+            this.positions[base + 2] = Math.sin(angle) * radius;
+
+            this.colors[base] = isCore ? 1 : 0.2 + heat * 0.72 + (isDust ? 0.08 : 0);
+            this.colors[base + 1] = isCore ? 0.78 : 0.4 + heat * 0.4;
+            this.colors[base + 2] = isCore ? 0.48 : 0.9 - heat * 0.34;
+        }
+
+        this.geometry = new THREE.BufferGeometry();
+        this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+        this.geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
+        this.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100000);
+
+        this.material = new THREE.PointsMaterial({
+            size: 0.068,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true
+        });
+
+        this.points = new THREE.Points(this.geometry, this.material);
+        this.points.rotation.x = -0.72;
+        this.points.rotation.z = 0.12;
+        this.points.position.y = -3.2;
+        scene.add(this.points);
+    }
+
+    step(timeSeconds) {
+        for (let i = 0; i < this.count; i++) {
+            const base = i * 3;
+            const radius = this.radii[i];
+            const angle = this.angles[i] + timeSeconds * this.speeds[i];
+            const shimmer = Math.sin(timeSeconds * 0.6 + i * 0.017) * 0.05;
+
+            this.positions[base] = Math.cos(angle) * radius;
+            this.positions[base + 1] = this.heights[i] + shimmer;
+            this.positions[base + 2] = Math.sin(angle) * radius;
+        }
+
+        this.points.rotation.y = timeSeconds * 0.025;
+        this.geometry.attributes.position.needsUpdate = true;
+    }
+
+    dispose() {
+        scene.remove(this.points);
+        this.geometry.dispose();
+        this.material.dispose();
+    }
 }
 
 function fillGalaxyPreset(preset, count) {
@@ -964,6 +1065,47 @@ function initializeSimulation() {
     updateControlsFromState();
 }
 
+function initializeLandingBackdrop() {
+    camera.position.set(0, 18, 48);
+    camera.lookAt(0, 0, 0);
+    bloomPass.strength = 0.18;
+    landingBackdrop = new LandingBackdrop();
+}
+
+function startSimulation(mode) {
+    if (simulationStarted) return;
+
+    simulationStarted = true;
+    currentMode = mode;
+    currentPreset = PRESETS.SPIRAL_GALAXY;
+    currentColorScheme = COLOR_SCHEMES.NEBULA;
+    const modeConfig = getParticleSettings(currentMode, currentPreset);
+    particleCount = modeConfig.defaultParticles;
+    bloomEnabled = true;
+    bloomStrength = 0.22;
+    particleBrightness = defaultBrightnessForPreset(currentPreset);
+    gravity = PRESET_DEFAULTS[currentPreset].gravity;
+    deltaTime = PRESET_DEFAULTS[currentPreset].deltaTime;
+    blackHoleMass = PRESET_DEFAULTS[currentPreset].blackHoleMass;
+    sampleCount = PRESET_DEFAULTS[currentPreset].samples;
+
+    ui.mode.value = currentMode;
+    ui.preset.value = currentPreset;
+    ui.colorScheme.value = currentColorScheme;
+    ui.body.classList.remove('landing-active');
+    ui.body.classList.add('sim-ready');
+    controls.enabled = true;
+
+    if (landingBackdrop) {
+        landingBackdrop.dispose();
+        landingBackdrop = null;
+    }
+
+    applyPresetDefaults(currentPreset);
+    updateControlsFromState();
+    initializeSimulation();
+}
+
 function applyPresetDefaults(preset) {
     const defaults = PRESET_DEFAULTS[preset];
     gravity = defaults.gravity;
@@ -990,6 +1132,13 @@ function resize() {
     composer.setSize(width, height);
     bloomPass.setSize(width * 0.6, height * 0.6);
 }
+
+ui.launchButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        const mode = button.dataset.launchMode === MODES.CPU ? MODES.CPU : MODES.GPU;
+        startSimulation(mode);
+    });
+});
 
 ui.mode.addEventListener('change', () => {
     const previousMode = currentMode;
@@ -1082,7 +1231,11 @@ function updateStats() {
 function animate(timeMs) {
     requestAnimationFrame(animate);
 
-    controls.update();
+    if (simulationStarted) {
+        controls.update();
+    }
+
+    landingBackdrop?.step(timeMs * 0.001);
     activeEngine?.step(timeMs * 0.001);
 
     const distance = camera.position.length();
@@ -1116,9 +1269,8 @@ function animate(timeMs) {
     updateStats();
 }
 
-applyPresetDefaults(currentPreset);
+initializeLandingBackdrop();
 updateControlsFromState();
-initializeSimulation();
 animate();
 
 window.addEventListener('unload', () => {
