@@ -160,8 +160,6 @@
             position: fixed;
             top: 12px;
             left: 12px;
-            display: grid;
-            gap: 4px;
             z-index: 10;
             min-width: 190px;
             padding: 10px 12px;
@@ -173,6 +171,17 @@
             backdrop-filter: blur(12px);
         }
 
+        .hud-panel-header {
+            display: flex;
+            justify-content: flex-end;
+            margin: -4px -6px 4px 0;
+        }
+
+        .hud-panel-content {
+            display: grid;
+            gap: 4px;
+        }
+
         .hud-row {
             display: flex;
             justify-content: space-between;
@@ -182,6 +191,39 @@
         .hud-value {
             font-variant-numeric: tabular-nums;
             font-weight: 700;
+        }
+
+        .panel-visibility-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 34px;
+            padding: 7px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0;
+            cursor: pointer;
+        }
+
+        .panel-visibility-toggle:hover {
+            border-color: rgba(255, 255, 255, 0.42);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .panel-visibility-toggle[aria-pressed="false"] {
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .panel-visibility-toggle svg {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
         }
 
         .control-panel {
@@ -198,6 +240,33 @@
             background: rgba(0, 0, 0, 0.72);
             color: white;
             backdrop-filter: blur(12px);
+        }
+
+        .control-panel-header {
+            display: flex;
+            justify-content: flex-start;
+            margin: -4px 0 10px -4px;
+        }
+
+        .hud.is-collapsed,
+        .control-panel.is-collapsed {
+            min-width: 0;
+            width: auto;
+            max-height: none;
+            overflow: hidden;
+            padding: 6px;
+        }
+
+        .hud.is-collapsed .hud-panel-header,
+        .control-panel.is-collapsed .control-panel-header {
+            margin: 0;
+        }
+
+        .hud.is-collapsed .hud-panel-content,
+        .control-panel.is-collapsed .control-panel-content,
+        .hud.is-collapsed .toggle-label,
+        .control-panel.is-collapsed .toggle-label {
+            display: none;
         }
 
         .control-item {
@@ -334,14 +403,33 @@
     </main>
 
     <div id="fps-counter" class="hud">
-        <div class="hud-row"><span>FPS</span><span id="fps-value" class="hud-value">0</span></div>
-        <div class="hud-row"><span>Particles</span><span id="hud-particle-count" class="hud-value">0</span></div>
-        <div class="hud-row"><span>Mode</span><span id="hud-mode" class="hud-value">GPU</span></div>
-        <div class="hud-row"><span>Physics</span><span id="hud-physics-ms" class="hud-value">0.0 ms</span></div>
-        <div class="hud-row"><span>Render</span><span id="hud-render-ms" class="hud-value">0.0 ms</span></div>
+        <div class="hud-panel-header">
+            <button id="toggle-hud" class="panel-visibility-toggle" type="button" aria-controls="fps-counter" aria-pressed="true" aria-label="Show or hide stats" title="Show or hide stats">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="toggle-label">Stats</span>
+            </button>
+        </div>
+        <div class="hud-panel-content">
+            <div class="hud-row"><span>FPS</span><span id="fps-value" class="hud-value">0</span></div>
+            <div class="hud-row"><span>Particles</span><span id="hud-particle-count" class="hud-value">0</span></div>
+            <div class="hud-row"><span>Mode</span><span id="hud-mode" class="hud-value">GPU</span></div>
+            <div class="hud-row"><span>Physics</span><span id="hud-physics-ms" class="hud-value">0.0 ms</span></div>
+            <div class="hud-row"><span>Render</span><span id="hud-render-ms" class="hud-value">0.0 ms</span></div>
+        </div>
     </div>
 
-    <div class="control-panel">
+    <div id="control-panel" class="control-panel">
+        <div class="control-panel-header">
+            <button id="toggle-controls" class="panel-visibility-toggle" type="button" aria-controls="control-panel" aria-pressed="true" aria-label="Show or hide tuning controls" title="Show or hide tuning controls">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h10M18 7h2M4 17h2M10 17h10M7 17a3 3 0 1 0 6 0 3 3 0 0 0-6 0ZM11 7a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span class="toggle-label">Tuning</span>
+            </button>
+        </div>
+        <div class="control-panel-content">
         <div class="control-item">
             <label for="engine-mode">Engine</label>
             <select id="engine-mode">
@@ -434,11 +522,17 @@
             <input id="particle-brightness" type="range" min="0.35" max="2.5" step="0.05" value="2">
         </div>
 
+        <div class="control-item toggle-row">
+            <label for="particle-brightness-variation">Body Brightness Variation</label>
+            <input id="particle-brightness-variation" class="checkbox-control" type="checkbox" checked>
+        </div>
+
         <div class="control-item">
             <label>
                 Camera Distance
                 <span id="camera-distance" class="value-display">100.00</span>
             </label>
+        </div>
         </div>
     </div>
 

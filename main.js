@@ -89,6 +89,8 @@ const COLOR_SCHEME_INDEX = {
 
 const LANDING_PARTICLES = 7800;
 const GITHUB_URL = 'https://github.com/bmfarley04/nbody-galaxy-sim';
+const DEFAULT_BLOOM_STRENGTH = 0.22;
+const UNIVERSE_BLOOM_STRENGTH = 0.06;
 
 const canvas = document.querySelector('#simulation');
 const renderer = new THREE.WebGLRenderer({
@@ -117,14 +119,15 @@ controls.screenSpacePanning = true;
 controls.enabled = false;
 
 const renderPass = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth * 0.6, window.innerHeight * 0.6), 0.22, 0.18, 0.32);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth * 0.6, window.innerHeight * 0.6), DEFAULT_BLOOM_STRENGTH, 0.18, 0.32);
 const composer = new EffectComposer(renderer);
 composer.addPass(renderPass);
 composer.addPass(bloomPass);
 
 let bloomEnabled = true;
-let bloomStrength = 0.22;
+let bloomStrength = DEFAULT_BLOOM_STRENGTH;
 let particleBrightness = 2;
+let particleBrightnessVariation = true;
 let activeEngine = null;
 let particleSystem = null;
 let geometry = null;
@@ -146,6 +149,10 @@ const ui = {
     body: document.body,
     landing: document.getElementById('landing'),
     launchButtons: document.querySelectorAll('[data-launch-mode]'),
+    hud: document.getElementById('fps-counter'),
+    controlPanel: document.getElementById('control-panel'),
+    hudToggle: document.getElementById('toggle-hud'),
+    controlPanelToggle: document.getElementById('toggle-controls'),
     mode: document.getElementById('engine-mode'),
     preset: document.getElementById('preset-selector'),
     colorScheme: document.getElementById('color-scheme'),
@@ -164,6 +171,7 @@ const ui = {
     bloomStrengthLabel: document.getElementById('bloom-strength-value'),
     particleBrightness: document.getElementById('particle-brightness'),
     particleBrightnessLabel: document.getElementById('particle-brightness-value'),
+    particleBrightnessVariation: document.getElementById('particle-brightness-variation'),
     cameraDistance: document.getElementById('camera-distance'),
     fps: document.getElementById('fps-value'),
     hudParticles: document.getElementById('hud-particle-count'),
@@ -176,6 +184,20 @@ const githubLink = ui.landing?.querySelector('.github-link');
 if (githubLink) {
     githubLink.href = GITHUB_URL;
 }
+
+function bindPanelVisibility(toggle, panel) {
+    if (!toggle || !panel) {
+        return;
+    }
+
+    toggle.addEventListener('click', () => {
+        const isVisible = !panel.classList.toggle('is-collapsed');
+        toggle.setAttribute('aria-pressed', isVisible.toString());
+    });
+}
+
+bindPanelVisibility(ui.hudToggle, ui.hud);
+bindPanelVisibility(ui.controlPanelToggle, ui.controlPanel);
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -203,6 +225,10 @@ function defaultBrightnessForPreset(preset) {
     return preset === PRESETS.UNIVERSE ? 1.5 : 2;
 }
 
+function defaultBloomStrengthForPreset(preset) {
+    return preset === PRESETS.UNIVERSE ? UNIVERSE_BLOOM_STRENGTH : DEFAULT_BLOOM_STRENGTH;
+}
+
 function updateControlsFromState() {
     const modeConfig = getParticleSettings();
 
@@ -225,6 +251,7 @@ function updateControlsFromState() {
     ui.bloomStrengthLabel.textContent = bloomStrength.toFixed(2);
     ui.particleBrightness.value = particleBrightness;
     ui.particleBrightnessLabel.textContent = particleBrightness.toFixed(2);
+    ui.particleBrightnessVariation.checked = particleBrightnessVariation;
     ui.colorScheme.value = currentColorScheme;
     ui.hudParticles.textContent = formatCount(particleCount);
     ui.hudMode.textContent = MODE_SETTINGS[currentMode].label;
@@ -669,6 +696,7 @@ const cpuParticleVertexShader = `
 const particleFragmentShader = `
     uniform float alphaScale;
     uniform float brightness;
+    uniform int brightnessVariation;
     uniform int presetType;
     uniform int colorScheme;
 
@@ -687,6 +715,7 @@ const particleFragmentShader = `
         float halo = pow(max(0.0, 1.0 - radius * 2.0), 1.55);
         float intensity = core * 0.78 + halo * 0.46;
         float brightnessAlpha = clamp(brightness, 0.35, 2.1);
+        float bodyBrightness = brightnessVariation == 1 ? 0.86 + vSeed * 0.28 : 1.0;
 
         if (presetType == 4) {
             vec3 lowAccelerationColor = vec3(0.05, 0.06, 0.24);
@@ -718,8 +747,8 @@ const particleFragmentShader = `
             }
 
             color = mix(color, highAccelerationColor, smoothstep(0.36, 1.0, heat));
-            color *= (0.72 + heat * 1.9 + vSeed * 0.18) * brightness;
-            gl_FragColor = vec4(color, clamp(intensity, 0.08, 1.0) * alphaScale * vDepthFade * brightnessAlpha);
+            color *= (0.72 + heat * 1.9 + vSeed * 0.18) * bodyBrightness * brightness;
+            gl_FragColor = vec4(color, clamp(intensity, 0.08, 1.0) * alphaScale * vDepthFade * brightnessAlpha * bodyBrightness);
             return;
         }
 
@@ -794,9 +823,9 @@ const particleFragmentShader = `
             color = mix(color, gold, smoothstep(0.48, 1.0, heat) * 0.74);
         }
 
-        color *= (0.88 + vSeed * 0.24) * brightness;
+        color *= (0.88 + vSeed * 0.24) * bodyBrightness * brightness;
 
-        gl_FragColor = vec4(color, clamp(intensity, 0.06, 1.0) * alphaScale * vDepthFade * brightnessAlpha);
+        gl_FragColor = vec4(color, clamp(intensity, 0.06, 1.0) * alphaScale * vDepthFade * brightnessAlpha * bodyBrightness);
     }
 `;
 
@@ -887,6 +916,7 @@ class GPUEngine {
                 pointSize: { value: getParticleVisuals().pointSize },
                 alphaScale: { value: getParticleVisuals().alphaScale },
                 brightness: { value: particleBrightness },
+                brightnessVariation: { value: particleBrightnessVariation ? 1 : 0 },
                 presetType: { value: PRESET_INDEX[currentPreset] },
                 colorScheme: { value: COLOR_SCHEME_INDEX[currentColorScheme] }
             },
@@ -979,6 +1009,7 @@ class CPUEngine {
                 pointSize: { value: getParticleVisuals().pointSize },
                 alphaScale: { value: getParticleVisuals().alphaScale },
                 brightness: { value: particleBrightness },
+                brightnessVariation: { value: particleBrightnessVariation ? 1 : 0 },
                 presetType: { value: PRESET_INDEX[currentPreset] },
                 colorScheme: { value: COLOR_SCHEME_INDEX[currentColorScheme] }
             },
@@ -1082,8 +1113,9 @@ function startSimulation(mode) {
     const modeConfig = getParticleSettings(currentMode, currentPreset);
     particleCount = modeConfig.defaultParticles;
     bloomEnabled = true;
-    bloomStrength = 0.22;
+    bloomStrength = defaultBloomStrengthForPreset(currentPreset);
     particleBrightness = defaultBrightnessForPreset(currentPreset);
+    particleBrightnessVariation = true;
     gravity = PRESET_DEFAULTS[currentPreset].gravity;
     deltaTime = PRESET_DEFAULTS[currentPreset].deltaTime;
     blackHoleMass = PRESET_DEFAULTS[currentPreset].blackHoleMass;
@@ -1113,6 +1145,7 @@ function applyPresetDefaults(preset) {
     blackHoleMass = defaults.blackHoleMass;
     sampleCount = defaults.samples;
     particleBrightness = defaultBrightnessForPreset(preset);
+    bloomStrength = defaultBloomStrengthForPreset(preset);
     if (defaults.particles) {
         particleCount = defaults.particles;
     }
@@ -1208,6 +1241,11 @@ ui.particleBrightness.addEventListener('input', () => {
     updateControlsFromState();
 });
 
+ui.particleBrightnessVariation.addEventListener('change', () => {
+    particleBrightnessVariation = ui.particleBrightnessVariation.checked;
+    updateControlsFromState();
+});
+
 window.addEventListener('resize', resize);
 
 let frameCount = 0;
@@ -1253,6 +1291,9 @@ function animate(timeMs) {
         }
         if (material.uniforms.brightness) {
             material.uniforms.brightness.value = particleBrightness;
+        }
+        if (material.uniforms.brightnessVariation) {
+            material.uniforms.brightnessVariation.value = particleBrightnessVariation ? 1 : 0;
         }
     }
 
