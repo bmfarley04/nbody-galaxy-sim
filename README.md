@@ -2,6 +2,9 @@ Hello!
 
 This is an updated version of the project I made for my algorithms class a couple years ago - i changed it to have a unique CPU version and a GPU version. The CPU version uses a web worker and I moved from the JS GPU library to actual shader code for the GPU version, as well as making a couple aesthetic changes. 
 
+Access this project here:
+https://nbody-galaxy.pages.dev/
+
 To run this project locally:
 
 ```sh
