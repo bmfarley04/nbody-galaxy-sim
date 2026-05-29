@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxy Simulator</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .hud {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            display: grid;
+            gap: 4px;
+            z-index: 10;
+            min-width: 190px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.68);
+            color: #fff;
+            font-size: 13px;
+            backdrop-filter: blur(12px);
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .hud-value {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+        }
+
+        .control-panel {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 10;
+            width: min(340px, calc(100vw - 24px));
+            max-height: calc(100vh - 24px);
+            overflow: auto;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.72);
+            color: white;
+            backdrop-filter: blur(12px);
+        }
+
+        .control-item {
+            margin: 0 0 14px;
+        }
+
+        .control-item:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        select,
+        input[type="range"] {
+            width: 100%;
+        }
+
+        select {
+            min-height: 34px;
+            padding: 6px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+        }
+
+        option {
+            background: #111;
+            color: white;
+        }
+
+        .value-display {
+            float: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: white;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .toggle-row label {
+            margin: 0;
+        }
+
+        .checkbox-control {
+            width: auto;
+        }
+
+        @media (max-width: 720px) {
+            .hud {
+                right: 12px;
+                min-width: 0;
+            }
+
+            .control-panel {
+                top: auto;
+                bottom: 12px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                max-height: 42vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="simulation"></canvas>
+
+    <div id="fps-counter" class="hud">
+        <div class="hud-row"><span>FPS</span><span id="fps-value" class="hud-value">0</span></div>
+        <div class="hud-row"><span>Particles</span><span id="hud-particle-count" class="hud-value">0</span></div>
+        <div class="hud-row"><span>Mode</span><span id="hud-mode" class="hud-value">GPU</span></div>
+        <div class="hud-row"><span>Physics</span><span id="hud-physics-ms" class="hud-value">0.0 ms</span></div>
+        <div class="hud-row"><span>Render</span><span id="hud-render-ms" class="hud-value">0.0 ms</span></div>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-item">
+            <label for="engine-mode">Engine</label>
+            <select id="engine-mode">
+                <option value="gpu" selected>Performance GPU</option>
+                <option value="cpu">Compatibility CPU</option>
+            </select>
+        </div>
+
+        <div class="control-item">
+            <label for="preset-selector">Galaxy Type</label>
+            <select id="preset-selector">
+                <option value="spiral-galaxy">Spiral Galaxy</option>
+                <option value="disk-galaxy">Disk Galaxy</option>
+                <option value="elliptical-galaxy">Elliptical Galaxy</option>
+                <option value="double-spiral-galaxy">Double Spiral Galaxy</option>
+                <option value="universe">Expanding Universe</option>
+                <option value="galaxy-collision">Galaxy Collision</option>
+            </select>
+        </div>
+
+        <div class="control-item">
+            <label for="color-scheme">Color Scheme</label>
+            <select id="color-scheme">
+                <option value="nebula" selected>Deep Nebula</option>
+                <option value="ember">Purple Ember</option>
+                <option value="spectrum">Cosmic Spectrum</option>
+                <option value="aurora">Aurora Violet</option>
+                <option value="stellar">Stellar Gold</option>
+            </select>
+        </div>
+
+        <div class="control-item">
+            <label for="particle-slider">
+                Particle Count
+                <span id="particle-count" class="value-display">131072</span>
+            </label>
+            <input id="particle-slider" type="range" min="4096" max="1048576" step="4096" value="131072">
+        </div>
+
+        <div class="control-item">
+            <label for="g-slider">
+                Gravitational Constant
+                <span id="g-value" class="value-display">0.8</span>
+            </label>
+            <input id="g-slider" type="range" min="0" max="8" step="0.05" value="0.8">
+        </div>
+
+        <div class="control-item">
+            <label for="timestep-slider">
+                Timestep
+                <span id="timestep-value" class="value-display">0.004</span>
+            </label>
+            <input id="timestep-slider" type="range" min="0.001" max="0.04" step="0.001" value="0.004">
+        </div>
+
+        <div class="control-item">
+            <label for="blackhole-mass">
+                Black Hole Mass
+                <span id="blackhole-mass-value" class="value-display">100</span>
+            </label>
+            <input type="range" id="blackhole-mass" min="0" max="1200" value="100" step="25">
+        </div>
+
+        <div class="control-item">
+            <label for="sample-count">
+                GPU Neighbor Samples
+                <span id="sample-count-value" class="value-display">48</span>
+            </label>
+            <input id="sample-count" type="range" min="0" max="128" step="8" value="48">
+        </div>
+
+        <div class="control-item toggle-row">
+            <label for="bloom-enabled">Bloom</label>
+            <input id="bloom-enabled" class="checkbox-control" type="checkbox" checked>
+        </div>
+
+        <div class="control-item">
+            <label for="bloom-strength">
+                Glow Strength
+                <span id="bloom-strength-value" class="value-display">0.22</span>
+            </label>
+            <input id="bloom-strength" type="range" min="0" max="0.7" step="0.01" value="0.22">
+        </div>
+
+        <div class="control-item">
+            <label for="particle-brightness">
+                Particle Brightness
+                <span id="particle-brightness-value" class="value-display">2.00</span>
+            </label>
+            <input id="particle-brightness" type="range" min="0.35" max="2.5" step="0.05" value="2">
+        </div>
+
+        <div class="control-item">
+            <label>
+                Camera Distance
+                <span id="camera-distance" class="value-display">100.00</span>
+            </label>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
