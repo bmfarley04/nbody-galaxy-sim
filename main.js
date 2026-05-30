@@ -15,7 +15,7 @@ const MODE_SETTINGS = {
         label: 'GPU',
         defaultParticles: 500000,
         minParticles: 500000,
-        maxParticles: 10000000,
+        maxParticles: 20000000,
         particleStep: 10000
     },
     [MODES.CPU]: {
@@ -59,7 +59,7 @@ const PRESET_PARTICLE_SETTINGS = {
         [MODES.GPU]: {
             defaultParticles: 500000,
             minParticles: 500000,
-            maxParticles: 10000000,
+            maxParticles: 20000000,
             particleStep: 10000
         },
         [MODES.CPU]: {
